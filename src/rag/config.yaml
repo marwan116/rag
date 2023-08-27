@@ -1,0 +1,45 @@
+fetch_docs:
+  owner: "ray-project"
+  repo: "ray"
+  version_tag: "releases/2.6.3"
+  paths_to_include: ["doc/source/"]
+  file_extensions_to_include: [".md", ".rst", ".py"]
+  paths_to_exclude: [
+    "doc/source/_ext/",
+    "doc/source/_includes/",
+    "doc/source/_static/",
+    "doc/source/_templates/"
+  ]
+  filenames_to_exclude: [
+    "cli.rst",
+    "index.rst",
+    "index.md",
+    "references.rst",
+    "references.md"
+  ]
+
+generate_nodes:
+  inherit_metadata_from_doc: True
+  construct_prev_next_relations: True
+  text_chunker:
+    chunk_size: 1024
+    chunk_overlap: 20
+    paragraph_separator: "\n\n\n"
+    sentence_tokenizer:
+      type: "tokenizers/punkt"
+    secondary_chunking_regex: "[^,.;。]+[,.;。]?"
+    tokenizer:
+      encoding: "gpt2"
+    word_seperator: " "
+  metadata_pipeline:
+    extractors:
+      - file_path_extractor
+      - text_hash_extractor
+
+qa_generator:
+  model: "gpt-3.5-turbo"
+  max_tokens: 1024
+  temperature: 1.0
+  top_p: 0.8
+  frequency_penalty: 0
+  presence_penalty: 0
