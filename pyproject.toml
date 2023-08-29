@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "rag"
+name = "docsrag"
 version = "0.1.0"
 description = "Generates evaluation dataset for fine-tuning LLM"
-packages = [{ include = "rag", from = "src" }]
+packages = [{ include = "docsrag", from = "src" }]
 authors = []
 
 readme = "README.md"
-include = ["README.md", "LICENSE.txt", "src/rag/py.typed"]
+include = ["README.md", "LICENSE.txt", "src/docsrag/py.typed"]
 exclude = [
     "*.so",
     "*.pyc",
@@ -37,7 +37,7 @@ matplotlib = "^3.7.2"
 
 
 [tool.poetry.scripts]
-rag = "rag.cli:app"
+docsrag = "docsrag.cli:app"
 
 [tool.poetry.dev-dependencies]
 # type hints
@@ -72,7 +72,7 @@ allow_untyped_decorators = true
 [tool.isort]
 profile = "black"
 combine_as_imports = true
-known_first_party = ["rag"]
+known_first_party = ["docsrag"]
 order_by_type = false
 
 [build-system]

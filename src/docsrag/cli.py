@@ -10,8 +10,8 @@ app = Typer()
 @app.command()
 def fetch_documents(config_path: Optional[str] = None):
     """Fetches data from the API."""
-    from rag.docs_fetcher import DocumentFetcher
-    from rag.utils import load_config, get_data_path
+    from docsrag.docs_fetcher import DocumentFetcher
+    from docsrag.utils import load_config, get_data_path
 
     config = load_config(config_path)
     doc_fetcher = DocumentFetcher.parse_obj(config["fetch_docs"])
@@ -33,9 +33,9 @@ def fetch_documents(config_path: Optional[str] = None):
 @app.command()
 def parse_nodes(config_path: Optional[str] = None):
     """Parses nodes from documents."""
-    from rag.docs_fetcher import DocumentFetcher
-    from rag.node_parser import NodeParser
-    from rag.utils import load_config, get_data_path
+    from docsrag.docs_fetcher import DocumentFetcher
+    from docsrag.node_parser import NodeParser
+    from docsrag.utils import load_config, get_data_path
 
     config = load_config(config_path)
 
@@ -47,7 +47,7 @@ def parse_nodes(config_path: Optional[str] = None):
     if not docs_path.exists():
         raise ValueError(
             f"Docs not found at {docs_path}. "
-            "Run `rag fetch-documents` to generate them."
+            "Run `docsrag fetch-documents` to generate them."
         )
 
     parser = NodeParser.parse_obj(config["generate_nodes"])
@@ -66,9 +66,9 @@ def parse_nodes(config_path: Optional[str] = None):
 @app.command()
 def build_vector_store(config_path: Optional[str] = None):
     """Builds the vector store."""
-    from rag.node_parser import NodeParser
-    from rag.utils import load_config, get_data_path
-    from rag.vector_store_builder import VectorStore
+    from docsrag.node_parser import NodeParser
+    from docsrag.utils import load_config, get_data_path
+    from docsrag.vector_store_builder import VectorStore
 
     config = load_config(config_path)
     parser = NodeParser.parse_obj(config["generate_nodes"])
@@ -79,7 +79,7 @@ def build_vector_store(config_path: Optional[str] = None):
 
     if not nodes_path.exists():
         raise ValueError(
-            f"Nodes not found at {nodes_path}. Run `rag parse-nodes` to generate them."
+            f"Nodes not found at {nodes_path}. Run `docsrag parse-nodes` to generate them."
         )
 
     with open(nodes_path, "rb") as f:
@@ -98,12 +98,12 @@ def build_vector_store(config_path: Optional[str] = None):
 @app.command()
 def generate_evaluation_dataset():
     """Generates the evaluation dataset."""
-    from rag.utils import get_data_path
+    from docsrag.utils import get_data_path
 
     import yaml
 
-    from rag.evaluation_dataset_generator import EvaluationDatasetBuilder
-    from rag.node_parser import NodeParser
+    from docsrag.evaluation_dataset_generator import EvaluationDatasetBuilder
+    from docsrag.node_parser import NodeParser
 
     config_path = get_data_path() / "config.yaml"
     with open(config_path) as f:
@@ -116,7 +116,7 @@ def generate_evaluation_dataset():
 
     if not nodes_path.exists():
         raise ValueError(
-            f"Nodes not found at {nodes_path}. Run `rag parse-nodes` to generate them."
+            f"Nodes not found at {nodes_path}. Run `docsrag parse-nodes` to generate them."
         )
 
     with open(nodes_path, "rb") as f:
@@ -137,11 +137,11 @@ def generate_evaluation_dataset():
 @app.command()
 def evaluate_vector_store():
     """Evaluates the vector store."""
-    from rag.utils import get_data_path
+    from docsrag.utils import get_data_path
 
     import yaml
 
-    from rag.vector_store_evaluator import VectorStoreEvaluator
+    from docsrag.vector_store_evaluator import VectorStoreEvaluator
 
     config_path = get_data_path() / "config.yaml"
     with open(config_path) as f:

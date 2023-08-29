@@ -16,6 +16,6 @@ def load_config(config_path: Optional[str] = None):
 
 
 def get_data_path() -> Path:
-    import rag
+    import docsrag
 
-    return Path(rag.__file__).parent.parent.parent / "data"
+    return Path(docsrag.__file__).parent.parent.parent / "data"

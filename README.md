@@ -8,12 +8,12 @@ Generates evaluation dataset for fine-tuning LLM
 Using poetry:
 
 ```bash
-poetry add rag
+poetry add docsrag
 ```
 
 Using pip:
 
 ```bash
-pip install rag
+pip install docsrag
 ```
 

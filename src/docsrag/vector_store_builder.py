@@ -52,7 +52,7 @@ class VectorStore(BaseModel):
         """Update the vector store."""
         from llama_index.storage.storage_context import StorageContext
 
-        from rag.vector_store_index import VectorStoreIndexRay
+        from docsrag.vector_store_index import VectorStoreIndexRay
 
         storage_context = StorageContext.from_defaults()
         vector_store_index = VectorStoreIndexRay(

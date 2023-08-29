@@ -49,7 +49,7 @@ import numpy as np
 import os
 from functools import cached_property
 
-from rag.utils import get_data_path
+from docsrag.utils import get_data_path
 
 if TYPE_CHECKING:
     from llama_index.schema import BaseNode, NodeWithScore
