@@ -32,7 +32,7 @@ plot - percent_perplexity_given_similarity_threshold
     - if so, count as a match
     - if not, count as a mismatch
 - Compute percent of matches for each similarity threshold
-- plot: percent perplexity given similarity threshold - the slower the increase the better
+- plot: percent perplexity given similarity threshold - the slower increase the better
 
 metric - percent_exact_match_in_top_k
 - Compute the distance between the question and all nodes
@@ -45,10 +45,11 @@ from typing import Any, TYPE_CHECKING
 from pydantic import BaseModel, Field
 from pathlib import Path
 import pandas as pd
-import pyarrow as pa
 import numpy as np
 import os
 from functools import cached_property
+
+from rag.utils import get_data_path
 
 if TYPE_CHECKING:
     from llama_index.schema import BaseNode, NodeWithScore
@@ -157,7 +158,7 @@ class VectorStoreEvaluator(BaseModel):
 
     vector_store: VectorStore
     evaluation_dataset_name: str
-    evaluation_dataset_dir: str = Field(default=Path(__file__).parent / "eval_data")
+    evaluation_dataset_dir: str = Field(default=get_data_path() / "eval_data")
 
     def _load_evaluation_dataset(self):
         path = Path(self.evaluation_dataset_dir) / self.evaluation_dataset_name

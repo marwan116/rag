@@ -1,6 +1,5 @@
 import asyncio
 import pickle
-from pathlib import Path
 from typing import Optional
 
 from typer import Typer
@@ -12,12 +11,12 @@ app = Typer()
 def fetch_documents(config_path: Optional[str] = None):
     """Fetches data from the API."""
     from rag.docs_fetcher import DocumentFetcher
-    from rag.utils import load_config
+    from rag.utils import load_config, get_data_path
 
     config = load_config(config_path)
     doc_fetcher = DocumentFetcher.parse_obj(config["fetch_docs"])
 
-    docs_dir = Path(__file__).parent / "docs"
+    docs_dir = get_data_path() / "docs"
     docs_dir.mkdir(exist_ok=True, parents=True)
     docs_path = docs_dir / f"{hash(doc_fetcher)}.pkl"
 
@@ -36,12 +35,12 @@ def parse_nodes(config_path: Optional[str] = None):
     """Parses nodes from documents."""
     from rag.docs_fetcher import DocumentFetcher
     from rag.node_parser import NodeParser
-    from rag.utils import load_config
+    from rag.utils import load_config, get_data_path
 
     config = load_config(config_path)
 
     loader = DocumentFetcher.parse_obj(config["fetch_docs"])
-    docs_dir = Path(__file__).parent / "docs"
+    docs_dir = get_data_path() / "docs"
     docs_dir.mkdir(exist_ok=True, parents=True)
     docs_path = docs_dir / f"{hash(loader)}.pkl"
 
@@ -52,7 +51,7 @@ def parse_nodes(config_path: Optional[str] = None):
         )
 
     parser = NodeParser.parse_obj(config["generate_nodes"])
-    nodes_dir = Path(__file__).parent / "nodes"
+    nodes_dir = get_data_path() / "nodes"
     nodes_dir.mkdir(exist_ok=True, parents=True)
     nodes_path = nodes_dir / f"{hash(parser)}.pkl"
 
@@ -68,13 +67,13 @@ def parse_nodes(config_path: Optional[str] = None):
 def build_vector_store(config_path: Optional[str] = None):
     """Builds the vector store."""
     from rag.node_parser import NodeParser
-    from rag.utils import load_config
+    from rag.utils import load_config, get_data_path
     from rag.vector_store_builder import VectorStore
 
     config = load_config(config_path)
     parser = NodeParser.parse_obj(config["generate_nodes"])
 
-    nodes_dir = Path(__file__).parent / "nodes"
+    nodes_dir = get_data_path() / "nodes"
     nodes_dir.mkdir(exist_ok=True, parents=True)
     nodes_path = nodes_dir / f"{hash(parser)}.pkl"
 
@@ -87,29 +86,31 @@ def build_vector_store(config_path: Optional[str] = None):
         nodes = pickle.load(f)
 
     vector_store = VectorStore.parse_obj(config["build_vector_store"])
-    vector_store_dir = Path(__file__).parent / "vector_store"
+    vector_store_dir = get_data_path() / "vector_store"
     vector_store_path = vector_store_dir / f"{hash(vector_store)}"
+    if vector_store_path.exists():
+        return
+    
     vector_store_path.mkdir(exist_ok=True, parents=True)
-
     vector_store.update(nodes=nodes, persist_dir=vector_store_path)
 
 
 @app.command()
 def generate_evaluation_dataset():
     """Generates the evaluation dataset."""
-    from pathlib import Path
+    from rag.utils import get_data_path
 
     import yaml
 
     from rag.evaluation_dataset_generator import EvaluationDatasetBuilder
     from rag.node_parser import NodeParser
 
-    config_path = Path(__file__).parent / "config.yaml"
+    config_path = get_data_path() / "config.yaml"
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
     parser = NodeParser.parse_obj(config["generate_nodes"])
-    nodes_dir = Path(__file__).parent / "nodes"
+    nodes_dir = get_data_path() / "nodes"
     nodes_dir.mkdir(exist_ok=True, parents=True)
     nodes_path = nodes_dir / f"{hash(parser)}.pkl"
 
@@ -124,23 +125,25 @@ def generate_evaluation_dataset():
     eval_data_builder = EvaluationDatasetBuilder.parse_obj(
         config["generate_evaluation_dataset"]
     )
-    eval_data_dir = Path(__file__).parent / "eval_data"
+    eval_data_dir = get_data_path() / "eval_data"
     eval_data_path = eval_data_dir / f"{hash(eval_data_builder)}"
+    if eval_data_path.exists():
+        return
+    
     eval_data_path.mkdir(exist_ok=True, parents=True)
-
     df = eval_data_builder.build(nodes)
     df.to_parquet(eval_data_path / "data.parquet")
 
 @app.command()
 def evaluate_vector_store():
     """Evaluates the vector store."""
-    from pathlib import Path
+    from rag.utils import get_data_path
 
     import yaml
 
     from rag.vector_store_evaluator import VectorStoreEvaluator
 
-    config_path = Path(__file__).parent / "config.yaml"
+    config_path = get_data_path() / "config.yaml"
     with open(config_path) as f:
         config = yaml.safe_load(f)
 

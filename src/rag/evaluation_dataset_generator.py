@@ -10,6 +10,7 @@ import joblib
 import openai
 import pandas as pd
 from pydantic import BaseModel, Field, validator
+from rag.utils import get_data_path
 
 if TYPE_CHECKING:
     from llama_index.schema import BaseNode
@@ -89,7 +90,7 @@ class NoiseInjectorFromParquet(BaseModel):
         keep_untouched = (cached_property,)
 
     dataset_name: str
-    dataset_dir: str = Field(default_factory=lambda: (Path(__file__).parent).resolve())
+    dataset_dir: str = Field(default_factory=get_data_path, exclude=True, repr=False)
 
     def __hash__(self) -> int:
         hash_hex = joblib.hash(self.dict())
@@ -191,7 +192,7 @@ class EvaluationDatasetBuilder(BaseModel):
         )
 
         df_meaningful_questions_answers.to_parquet(
-            Path(__file__).parent / "meaningful_questions.parquet"
+            get_data_path() / "meaningful_questions.parquet"
         )
 
         df = self._inject_noise(df_meaningful_questions_answers)
