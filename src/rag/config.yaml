@@ -3,20 +3,17 @@ fetch_docs:
   repo: "ray"
   version_tag: "releases/2.6.3"
   paths_to_include: ["doc/source/"]
-  file_extensions_to_include: [".md", ".rst", ".py"]
+  # TODO - include ".py", ".ipynb"
+  # .py files require summarization and .ipynb files require
+  # special parsing to remove cell outputs
+  file_extensions_to_include: [".md", ".rst"]
   paths_to_exclude: [
     "doc/source/_ext/",
     "doc/source/_includes/",
     "doc/source/_static/",
     "doc/source/_templates/"
   ]
-  filenames_to_exclude: [
-    "cli.rst",
-    "index.rst",
-    "index.md",
-    "references.rst",
-    "references.md"
-  ]
+  filenames_to_exclude: []
 
 generate_nodes:
   inherit_metadata_from_doc: True
@@ -36,10 +33,36 @@ generate_nodes:
       - file_path_extractor
       - text_hash_extractor
 
-qa_generator:
-  model: "gpt-3.5-turbo"
-  max_tokens: 1024
-  temperature: 1.0
-  top_p: 0.8
-  frequency_penalty: 0
-  presence_penalty: 0
+build_vector_store:
+  embedding_model_name: "BAAI/bge-small-en"
+  # embedding_model_name: "sentence-transformers/all-mpnet-base-v2"
+
+generate_evaluation_dataset:
+  qa_generator_open_ai:
+    model: "gpt-3.5-turbo"
+    system_prompt: |
+      You are a helpful assistant that generates questions and answers from a provided context.
+      The context will be selected documents from the ray's project documentation.
+      The questions you generate should be obvious on their own and should mimic what a developer might ask trying to work with ray, especially if they can't directly find the answer in the documentation.
+      The answers should be factually correct, can be of a variable length and can contain code.
+      If the provided context does not contain enough information to create a question and answer, you should respond with 'I can't generate a question and answer from this context'. 
+      The following is an example of how the output should look:
+      Q1: How can I view ray dashboard from outside the Kubernetes cluster?
+      A1: You can use port-forwarding. Run the command 'kubectl port-forward --address 0.0.0.0 ${RAYCLUSTER_HEAD_POD} 8265:8265'
+
+      Q2: {question}
+      A2: {answer}
+    user_prompt_template: |
+      Provide questions and answers from the following context:
+
+      {context}
+    max_tokens: 1024
+    temperature: 1.0
+    top_p: 0.85
+    frequency_penalty: 0
+    presence_penalty: 0
+  
+  noise_injector_from_parquet:
+    dataset_name: "trivia_questions.parquet"
+
+  
