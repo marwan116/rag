@@ -191,10 +191,6 @@ class EvaluationDatasetBuilder(BaseModel):
             ]
         )
 
-        df_meaningful_questions_answers.to_parquet(
-            get_data_path() / "meaningful_questions.parquet"
-        )
-
         df = self._inject_noise(df_meaningful_questions_answers)
 
         return df

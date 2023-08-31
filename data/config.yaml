@@ -34,8 +34,7 @@ generate_nodes:
       - text_hash_extractor
 
 build_vector_store:
-  embedding_model_name: "BAAI/bge-small-en"
-  # embedding_model_name: "sentence-transformers/all-mpnet-base-v2"
+  embedding_model_name: "BAAI/bge-small-en" # "sentence-transformers/all-mpnet-base-v2"
 
 generate_evaluation_dataset:
   qa_generator_open_ai:
@@ -65,4 +64,5 @@ generate_evaluation_dataset:
   noise_injector_from_parquet:
     dataset_name: "trivia_questions.parquet"
 
-  
+evaluate_embedding_vector_store:
+  top_ks: [1, 3, 4, 5, 7, 10]

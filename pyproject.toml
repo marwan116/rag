@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docsrag"
-version = "0.1.0"
+version = "0.1.2"
 description = "Generates evaluation dataset for fine-tuning LLM"
 packages = [{ include = "docsrag", from = "src" }]
 authors = []
@@ -34,6 +34,9 @@ ray = { version = "~2.4.0", extras = ["air", "dashboard"] }
 pydantic = { version = "<2" }
 backoff = "^2.2.1"
 matplotlib = "^3.7.2"
+unstructured = "^0.10.8"
+gradio = "^3.41.2"
+fastapi = "^0.103.0"
 
 
 [tool.poetry.scripts]

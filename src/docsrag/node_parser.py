@@ -182,19 +182,24 @@ class NodeParser(BaseModel):
     construct_prev_next_relations: bool
     metadata_pipeline: MetadataPipeline
 
-    def run(self, documents: list["Document"]) -> list["BaseNode"]:
+    def run(
+        self, documents: list["Document"], use_ray: bool = True, batch_size: int = 100
+    ) -> list["BaseNode"]:
         """Parse the documents into nodes."""
-        import ray
+        if use_ray:
+            import ray
 
-        ray.init(ignore_reinit_error=True)
+            ray.init(ignore_reinit_error=True)
 
-        return [
-            node
-            for node in ray.data.from_items(documents)
-            .flat_map(self.parse_document)
-            .map_batches(lambda x: x, batch_size=100)
-            .iter_rows()
-        ]
+            return [
+                node
+                for node in ray.data.from_items(documents)
+                .flat_map(self.parse_document)
+                .map_batches(lambda x: x, batch_size=batch_size)
+                .iter_rows()
+            ]
+        else:
+            return [node for doc in documents for node in self.parse_document(doc)]
 
     def parse_document(self, document: "Document") -> list["BaseNode"]:
         """Parse a document into nodes."""

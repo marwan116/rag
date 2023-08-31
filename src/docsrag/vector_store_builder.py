@@ -48,7 +48,7 @@ class VectorStore(BaseModel):
             callback_manager=CallbackManager(),
         )
 
-    def update(self, nodes, persist_dir):
+    def update(self, nodes, persist_dir, num_gpus, batch_size):
         """Update the vector store."""
         from llama_index.storage.storage_context import StorageContext
 
@@ -61,6 +61,8 @@ class VectorStore(BaseModel):
             service_context=self.service_context,
             storage_context=storage_context,
             show_progress=True,
+            num_gpus=num_gpus,
+            batch_size=batch_size,
         )
         vector_store_index.storage_context.persist(persist_dir=persist_dir)
 
