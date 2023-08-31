@@ -1,18 +1,18 @@
 """Evaluate the performance of a vector store."""
 import logging
-import os
-from typing import Any, Callable, Optional
-from pydantic import BaseModel, Field
-from pathlib import Path
-import pandas as pd
-import numpy as np
 from functools import cached_property
-from torch import Tensor
-import torch
+from pathlib import Path
+from typing import Any, Callable, Optional
 
-from docsrag.utils import get_data_path
-from docsrag.embedding.index import VectorStoreIndexRay
+import numpy as np
+import pandas as pd
+import torch
+from pydantic import BaseModel, Field
 from sentence_transformers.util import cos_sim
+from torch import Tensor
+
+from docsrag.embedding.index import VectorStoreIndexRay
+from docsrag.utils import get_data_path
 
 PandasRow = Any
 
@@ -33,6 +33,7 @@ class InformationRetrievalEvaluator:
     It also computes the following metric irrespective of any setting:
     - Average Similarity Score
     """
+
     def __init__(
         self,
         queries: dict[str, str],  # qid => query
@@ -99,7 +100,8 @@ class InformationRetrievalEvaluator:
 
         # Compute embedding for the queries
         query_embeddings = torch.tensor(
-            [model.embed_query(text) for text in self.queries]
+            [model.embed_query(text) for text in self.queries],
+            device="cuda" if torch.cuda.is_available() else "cpu",
         )
 
         queries_result_list = {}
@@ -240,6 +242,22 @@ class InformationRetrievalEvaluator:
         return dcg
 
 
+def load_evaluation_dataset(
+    evaluation_dataset_dir, evaluation_dataset_name, limit: Optional[int]
+):
+    """Load evaluation dataset."""
+    path = Path(evaluation_dataset_dir) / evaluation_dataset_name
+    df = pd.read_parquet(path, columns=["question", "answer", "text_hash"])
+    non_empty_answer = (df["answer"] != "") & (df["answer"].notnull())
+    non_empty_hash = (df["text_hash"] != "") & (df["text_hash"].notnull())
+    df_without_noisy_questions = df[non_empty_answer & non_empty_hash].reset_index(
+        drop=True
+    )
+    if limit:
+        return df_without_noisy_questions.iloc[:limit]
+    return df_without_noisy_questions
+
+
 class VectorStoreEvaluator(BaseModel):
     """Evaluate the performance of a vector store."""
 
@@ -248,27 +266,10 @@ class VectorStoreEvaluator(BaseModel):
         keep_untouched = (cached_property,)
 
     vector_store_index: VectorStoreIndexRay
-    evaluation_dataset_name: str
-    evaluation_dataset_dir: str = Field(default=get_data_path() / "eval_data")
     top_ks: list[int]
 
-    def _load_evaluation_dataset(self, limit: Optional[int]):
-        path = Path(self.evaluation_dataset_dir) / self.evaluation_dataset_name
-        df = pd.read_parquet(path, columns=["question", "answer", "text_hash"])
-        non_empty_answer = (df["answer"] != "") & (df["answer"].notnull())
-        non_empty_hash = (df["text_hash"] != "") & (df["text_hash"].notnull())
-        df_without_noisy_questions = df[non_empty_answer & non_empty_hash].reset_index(
-            drop=True
-        )
-        if limit:
-            return df_without_noisy_questions.iloc[:limit]
-        else:
-            return df_without_noisy_questions
-
-    def run(self, limit: Optional[int] = None):
-        df = self._load_evaluation_dataset(limit)
-
-        queries = {row.Index: row.question for row in df.itertuples()}
+    def run(self, eval_df: pd.DataFrame):
+        queries = {row.Index: row.question for row in eval_df.itertuples()}
 
         corpus = {node.node_id: node.text for node in self.vector_store_index.nodes}
 
@@ -276,7 +277,7 @@ class VectorStoreEvaluator(BaseModel):
             row.Index: {
                 self.vector_store_index.text_hash_to_node[row.text_hash].node_id
             }
-            for row in df.itertuples()
+            for row in eval_df.itertuples()
         }
 
         evaluator = InformationRetrievalEvaluator(
@@ -287,7 +288,7 @@ class VectorStoreEvaluator(BaseModel):
             ndcg_at_k=self.top_ks,
             recall_at_k=self.top_ks,
             show_progress_bar=True,
-            name=f"{self.evaluation_dataset_name}-{self.vector_store_index._embedding_model_name}",
+            name=self.vector_store_index._embedding_model_name,
             score_functions={"cos_sim": cos_sim},
             main_score_function=cos_sim,
         )
@@ -296,7 +297,8 @@ class VectorStoreEvaluator(BaseModel):
             [
                 self.vector_store_index._vector_store._data.embedding_dict[node.node_id]
                 for node in self.vector_store_index.nodes
-            ]
+            ],
+            device="cuda" if torch.cuda.is_available() else "cpu",
         )
 
         model = self.vector_store_index._embed_model._langchain_embedding
@@ -305,4 +307,8 @@ class VectorStoreEvaluator(BaseModel):
             model=model, corpus_embeddings=corpus_embeddings
         )
 
-        return metrics
+        return (
+            pd.DataFrame(metrics["cos_sim"])
+            .reset_index()
+            .rename(columns={"index": "top_k"})
+        )

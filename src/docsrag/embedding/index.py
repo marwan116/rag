@@ -1,25 +1,33 @@
 """Vector Store Index with Ray parallelization."""
-from functools import partial, cached_property
 import json
+from functools import cached_property, partial
 from typing import Any, Sequence
 
+import joblib
 import ray
-from llama_index.schema import BaseNode, NodeWithScore
-from pydantic import BaseModel
-from docsrag.embedding.utils import cosine_similarity, load_embed_model, get_embedding
-from llama_index.indices.query.schema import QueryBundle
-from llama_index.indices.base import BaseIndex
+import torch
 from llama_index.data_structs.data_structs import IndexDict
+from llama_index.embeddings.langchain import LangchainEmbedding
+from llama_index.indices.base import BaseIndex
+from llama_index.indices.query.schema import QueryBundle
+from llama_index.schema import BaseNode, NodeWithScore
 from llama_index.storage.docstore import SimpleDocumentStore
 from llama_index.storage.index_store import SimpleIndexStore
 from llama_index.vector_stores.simple import SimpleVectorStore
-from llama_index.embeddings.langchain import LangchainEmbedding
+from pydantic import BaseModel
+from sentence_transformers.util import cos_sim
+
+from docsrag.embedding.utils import cosine_similarity, get_embedding, load_embed_model
 
 
 class VectorStoreSpec(BaseModel):
     """Vector Store."""
 
     embedding_model_name: str
+
+    def __hash__(self) -> int:
+        hash_hex = joblib.hash(self.dict())
+        return int(hash_hex, 16)
 
 
 class VectorStoreIndexRay(BaseIndex[IndexDict]):
@@ -139,22 +147,33 @@ class VectorStoreIndexRay(BaseIndex[IndexDict]):
     def retrieve_most_similiar_nodes(
         self, query: str, similarity_top_k: str
     ) -> Sequence[BaseNode]:
-        nodes_with_scores = [
-            NodeWithScore(
-                node=node,
-                score=self.compute_similarity(
-                    query_bundle=self._compute_query_embedding_bundle(query),
-                    node=node,
-                ),
-            )
-            for node in self.nodes
-        ]
+        model = self._embed_model._langchain_embedding
+        query_embeddings = torch.tensor([model.embed_query(query)])
+        corpus_embeddings = torch.tensor(
+            [
+                self._vector_store._data.embedding_dict[node.node_id]
+                for node in self.nodes
+            ]
+        )
+        pair_scores = cos_sim(query_embeddings, corpus_embeddings)
+        pair_scores_top_k_values, pair_scores_top_k_idx = torch.topk(
+            pair_scores,
+            min(similarity_top_k, len(corpus_embeddings)),
+            dim=1,
+            largest=True,
+            sorted=True,
+        )
 
-        return sorted(
-            [node_with_score for node_with_score in nodes_with_scores],
-            key=lambda x: x.score,
-            reverse=True,
-        )[:similarity_top_k]
+        scores = pair_scores_top_k_values.squeeze().cpu().tolist()
+        nodes_idx = pair_scores_top_k_idx.squeeze().cpu().tolist()
+
+        return [
+            NodeWithScore(
+                node=self.nodes[node_idx],
+                score=score,
+            )
+            for score, node_idx in zip(scores, nodes_idx)
+        ]
 
     # HACK: This is a hack to get around the fact that the base class requires
     # these abstract methods to be implemented, but we don't need them for this

@@ -10,6 +10,7 @@ import joblib
 import openai
 import pandas as pd
 from pydantic import BaseModel, Field, validator
+
 from docsrag.utils import get_data_path
 
 if TYPE_CHECKING:

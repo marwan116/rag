@@ -1,6 +1,6 @@
 import asyncio
-from pathlib import Path
 import pickle
+from pathlib import Path
 from typing import Optional
 
 from typer import Typer
@@ -16,7 +16,7 @@ def fetch_documents(
 ):
     """Fetches data from the API."""
     from docsrag.docs_loader import GithubDocumentLoader
-    from docsrag.utils import load_config, get_data_path
+    from docsrag.utils import get_data_path, load_config
 
     config = load_config(config_path)
     doc_fetcher = GithubDocumentLoader.parse_obj(config["fetch_docs"])
@@ -41,7 +41,7 @@ def parse_nodes(
     """Parses nodes from documents."""
     from docsrag.docs_loader import GithubDocumentLoader
     from docsrag.node_parser import NodeParser
-    from docsrag.utils import load_config, get_data_path
+    from docsrag.utils import get_data_path, load_config
 
     config = load_config(config_path)
 
@@ -80,9 +80,9 @@ def build_embedding_vector_store_index(
     force_run: bool = False,
 ):
     """Takes generated nodes, produces their embedding and stores it in an index."""
+    from docsrag.embedding.index import VectorStoreIndexRay, VectorStoreSpec
     from docsrag.node_parser import NodeParser
-    from docsrag.utils import load_config, get_data_path
-    from docsrag.embedding.index import VectorStoreSpec, VectorStoreIndexRay
+    from docsrag.utils import get_data_path, load_config
 
     config = load_config(config_path)
     parser = NodeParser.parse_obj(config["generate_nodes"])
@@ -117,8 +117,8 @@ def query(
     self, query: str, config_path: Optional[str] = None, data_path: Optional[str] = None
 ):
     """Queries configured LLM model with vector store augmentation."""
-    from docsrag.vector_store_builder import VectorStore
     from docsrag.utils import load_config
+    from docsrag.vector_store_builder import VectorStore
 
     config = load_config(config_path)
     vector_store = VectorStore.parse_obj(config["build_vector_store"])
@@ -140,9 +140,9 @@ def generate_evaluation_dataset(
     config_path: Optional[str] = None, data_path: Optional[str] = None
 ):
     """Generates the evaluation dataset."""
-    from docsrag.utils import get_data_path, load_config
     from docsrag.evaluation_dataset_generator import EvaluationDatasetBuilder
     from docsrag.node_parser import NodeParser
+    from docsrag.utils import get_data_path, load_config
 
     config = load_config(config_path)
 
@@ -179,10 +179,13 @@ def evaluate_embedding_vector_store(
     config_path: Optional[str] = None, data_path: Optional[str] = None
 ):
     """Evaluates the vector store."""
-    from docsrag.utils import get_data_path, load_config
-    from docsrag.embedding.evaluation import VectorStoreEvaluator
+    from docsrag.embedding.evaluation import (
+        VectorStoreEvaluator,
+        load_evaluation_dataset,
+    )
+    from docsrag.embedding.index import VectorStoreIndexRay, VectorStoreSpec
     from docsrag.evaluation_dataset_generator import EvaluationDatasetBuilder
-    from docsrag.embedding.index import VectorStoreSpec, VectorStoreIndexRay
+    from docsrag.utils import get_data_path, load_config
 
     config = load_config(config_path)
     data_path_to_use = Path(data_path) if data_path is not None else get_data_path()
@@ -210,23 +213,16 @@ def evaluate_embedding_vector_store(
 
     evaluator = VectorStoreEvaluator(
         vector_store_index=VectorStoreIndexRay.load(vector_store_path),
+        top_ks=config["evaluate_embedding_vector_store"]["top_ks"],
+    )
+    eval_df = load_evaluation_dataset(
+        evaluation_dataset_dir=(
+            Path(data_path) if data_path is not None else get_data_path()
+        ),
         evaluation_dataset_name=hash(eval_data_builder),
-        top_ks=config["evaluate_embedding_vector_store"]["top_ks"]
     )
-    evaluator.evaluation_dataset_dir = (
-        Path(data_path) if data_path is not None else get_data_path()
-    )
-    scores = evaluator.run()
+    scores = evaluator.run(eval_df)
     print(scores)
-
-    # evaluator = VectorStoreEvaluator(
-    #     vector_store_index=VectorStoreIndexRay.load(
-    #         Path("./data/vector_store/609458502334478189/")
-    #     ),
-    #     evaluation_dataset_name="1618109849114044135",
-    # )
-    # scores = evaluator.run()
-    # print(scores)
 
 
 if __name__ == "__main__":
