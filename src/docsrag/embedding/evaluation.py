@@ -102,7 +102,7 @@ class InformationRetrievalEvaluator:
         query_embeddings = torch.tensor(
             [model.embed_query(text) for text in self.queries],
             device="cuda" if torch.cuda.is_available() else "cpu",
-        )
+        ).float()
 
         queries_result_list = {}
         for name in self.score_functions:
@@ -299,7 +299,7 @@ class VectorStoreEvaluator(BaseModel):
                 for node in self.vector_store_index.nodes
             ],
             device="cuda" if torch.cuda.is_available() else "cpu",
-        )
+        ).float()
 
         model = self.vector_store_index._embed_model._langchain_embedding
 

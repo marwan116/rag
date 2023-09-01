@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docsrag"
-version = "0.1.5"
+version = "0.1.6"
 description = "Generates evaluation dataset for fine-tuning LLM"
 packages = [{ include = "docsrag", from = "src" }]
 authors = []
